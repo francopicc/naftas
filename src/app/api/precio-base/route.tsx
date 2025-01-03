@@ -2,6 +2,9 @@
 import axios from "axios";
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 interface Coordinates {
   lat: number;
   lng: number;

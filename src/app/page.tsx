@@ -8,6 +8,9 @@ import { es } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Fuel, ChevronRight } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 interface Precio {
   precio: number;
   fechaVigencia: string;
