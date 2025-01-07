@@ -68,16 +68,17 @@ const fetchData = async (lat: number, long: number) => {
   const fetchCombustible = async (combustibleId: number): Promise<CombustibleData> => {
     const formDataCombustible = new FormData();
     formDataCombustible.append('method', 'getEmpresasAgrupadasBanderasCombustible');
+    // Incluir todas las banderas posibles para obtener precios globales
     formDataCombustible.append('banderas', JSON.stringify(["28", "2", "26", "4"]));
     formDataCombustible.append('combustible', combustibleId.toString());
     formDataCombustible.append('bounds', JSON.stringify({
       so: {
-        lat: coordinates.lat - 1,
-        lng: coordinates.lng - 1
+        lat: coordinates.lat - 2, // Ampliamos el radio de búsqueda
+        lng: coordinates.lng - 2
       },
       ne: {
-        lat: coordinates.lat + 0.8,
-        lng: coordinates.lng + 0.8
+        lat: coordinates.lat + 2,
+        lng: coordinates.lng + 2
       }
     }));
 
@@ -91,11 +92,13 @@ const fetchData = async (lat: number, long: number) => {
   };
 
   try {
-    // Realizar fetches de combustibles en paralelo
-    const combustiblePromises: Promise<CombustibleData>[] = [19, 21, 6, 2, 3].map(fetchCombustible);
+    // Realizar fetches de todos los tipos de combustibles en paralelo
+    const combustiblePromises: Promise<CombustibleData>[] = [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+    ].map(fetchCombustible);
     const resultadoFinal = await Promise.all(combustiblePromises);
 
-    // Organizar la información por empresa (utilizando CUIT como clave)
+    // Organizar la información por empresa
     const empresasData: Empresa[] = [];
 
     // Iterar sobre los resultados de cada tipo de combustible
@@ -103,11 +106,9 @@ const fetchData = async (lat: number, long: number) => {
       const tipoCombustible = combustibleData.tipoCombustible;
       combustibleData.estaciones.resultado.forEach((estacion: EstacionResponse) => {
         const idEmpresa = estacion.idempresa;
-        // Buscar la empresa en el array de empresas
         let empresaExistente = empresasData.find((empresa) => empresa.idempresa === idEmpresa);
     
         if (!empresaExistente) {
-          // Si la empresa no existe, agregarla al array
           empresaExistente = {
             idempresa: idEmpresa,
             cuit: estacion.cuit,
@@ -122,17 +123,24 @@ const fetchData = async (lat: number, long: number) => {
           empresasData.push(empresaExistente);
         }
     
-        // Agregar precios del tipo de combustible para la empresa
-        const precio = estacion.precios[tipoCombustible]?.precio;
-        const fechaVigencia = estacion.precios[tipoCombustible]?.fechavigencia;
-        const nombreCombustible = getNombreCombustible(tipoCombustible, estacion.empresabandera);
-        empresaExistente.precios[tipoCombustible] = {
-          tipoCombustible,
-          precio,
-          fechaVigencia,
-          confiabilidad: calcularNivelConfiabilidad(fechaVigencia),
-          nombre: nombreCombustible,
-        };
+        // Solo agregar precios si existen y son válidos
+        if (estacion.precios[tipoCombustible]?.precio > 0) {
+          const precio = estacion.precios[tipoCombustible]?.precio;
+          const fechaVigencia = estacion.precios[tipoCombustible]?.fechavigencia;
+          const nombreCombustible = getNombreCombustible(tipoCombustible, estacion.empresabandera);
+          
+          // Actualizar solo si el precio es más reciente
+          if (!empresaExistente.precios[tipoCombustible] || 
+              new Date(fechaVigencia) > new Date(empresaExistente.precios[tipoCombustible].fechaVigencia)) {
+            empresaExistente.precios[tipoCombustible] = {
+              tipoCombustible,
+              precio,
+              fechaVigencia,
+              confiabilidad: calcularNivelConfiabilidad(fechaVigencia),
+              nombre: nombreCombustible,
+            };
+          }
+        }
       });
     });
 
@@ -149,7 +157,14 @@ const fetchData = async (lat: number, long: number) => {
       };
     });
 
-    const estacionesOrdenadas = estacionesConDistancia.sort((a, b) => a.distancia - b.distancia);
+    // Ordenar por fecha de actualización más reciente y distancia
+    const estacionesOrdenadas = estacionesConDistancia.sort((a, b) => {
+      const fechaA = Math.max(...Object.values(a.precios).map(p => new Date(p.fechaVigencia).getTime()));
+      const fechaB = Math.max(...Object.values(b.precios).map(p => new Date(p.fechaVigencia).getTime()));
+      if (fechaA !== fechaB) return fechaB - fechaA;
+      return a.distancia - b.distancia;
+    });
+
     return estacionesOrdenadas;
   } catch (error) {
     if (error instanceof Error) {
@@ -293,7 +308,33 @@ const calcularDistancia = (coordenadas1: Coordinates, coordenadas2: Coordinates)
 
 export async function GET(request: Request) {
   try {
-    const datos = await fetchData(-34.573060, -58.422024);
+    const { searchParams } = new URL(request.url);
+    const zona = searchParams.get('zona') || 'este';
+
+    let lat: number;
+    let lng: number;
+
+    switch(zona.toLowerCase()) {
+      case 'sur':
+        lat = -39.02496820106367;
+        lng = -67.57594084801558;
+        break;
+      case 'oeste':
+        lat = -41.13760192273125;
+        lng = -71.30180540523081;
+        break;
+      case 'norte':
+        lat = -24.790997533553384;
+        lng = -65.42015037222895;
+        break;
+      case 'este':
+      default:
+        lat = -34.573060;
+        lng = -58.422024;
+        break;
+    }
+
+    const datos = await fetchData(lat, lng);
     return NextResponse.json(datos);
   } catch (e) {
     if (e instanceof Error) {
