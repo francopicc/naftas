@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fuel, ChevronRight } from 'lucide-react';
+import { Fuel, ChevronRight, Check, Copy } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -92,7 +92,14 @@ const BottomSheet = ({ isOpen, onClose, estacion, combustible, tipoCombustible }
   tipoCombustible: string;
 }) => {
   const [litros, setLitros] = useState('');
+  const [copiado, setCopiado] = useState(false);
   const total = parseFloat(litros) * combustible.precio || 0;
+
+  const copiarAlPortapapeles = () => {
+    navigator.clipboard.writeText(total.toFixed(2));
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
 
   return (
     <AnimatePresence>
@@ -110,7 +117,7 @@ const BottomSheet = ({ isOpen, onClose, estacion, combustible, tipoCombustible }
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 500 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl p-6 space-y-6"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl p-6 space-y-6 md:w-1/2 md:mx-auto"
           >
             <div className="flex items-center space-x-4">
               <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -149,7 +156,16 @@ const BottomSheet = ({ isOpen, onClose, estacion, combustible, tipoCombustible }
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total a pagar:</span>
-                  <span className="text-xl font-bold">${total.toFixed(2)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold">${total.toFixed(2)}</span>
+                    <button
+                      onClick={copiarAlPortapapeles}
+                      className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                      title={copiado ? "¡Copiado!" : "Copiar al portapapeles"}
+                    >
+                      {copiado ? <Check size={20} className="text-gray-500" /> : <Copy size={20} className="text-gray-500" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,7 +251,7 @@ export default function Home() {
         <div className="h-10 w-10 rounded bg-gray-200"></div>
         <div className="h-4 w-32 bg-gray-200 rounded"></div>
       </div>
-      {[1, 2, 3].map((i) => (
+      {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="mb-4">
           <div className="flex justify-between">
             <div className="space-y-2">
@@ -244,7 +260,7 @@ export default function Home() {
             </div>
             <div className="h-4 w-16 bg-gray-200 rounded"></div>
           </div>
-          {i < 3 && <div className="border-t border-gray-100 my-3" />}
+          {i < 5 && <div className="border-t border-gray-100 my-3" />}
         </div>
       ))}
     </div>
