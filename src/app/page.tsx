@@ -88,7 +88,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange }: { isOpen: boolean, onC
             <option value="" disabled>Selecciona una zona</option>
             <option value="norte">Norte</option>
             <option value="sur">Sur</option>
-            <option value="este">Este</option>
+            <option value="este" selected>Este</option>
             <option value="oeste">Oeste</option>
           </motion.select>
           <div className="absolute right-4 top-1/2 -mt-3 -translate-y-1/2 pointer-events-none text-gray-500">
@@ -380,6 +380,7 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
+      setIsLoading(true);
       const response = await axios.get(`/api/precio-base?zona=${selectedZone}`);
       setResponseData(response.data);
     } catch (error) {

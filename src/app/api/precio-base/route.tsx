@@ -324,16 +324,18 @@ export async function GET(request: Request) {
         lng = -71.30180540523081;
         break;
       case 'norte':
-        lat = -24.790997533553384;
-        lng = -65.42015037222895;
+        lat = -27.796165362379934;
+        lng = -64.26317382700948;
         break;
       case 'este':
+        lat = -34.573060;
+        lng = -58.422024;
+        break
       default:
         lat = -34.573060;
         lng = -58.422024;
         break;
     }
-
     const datos = await fetchData(lat, lng);
     return NextResponse.json(datos);
   } catch (e) {
