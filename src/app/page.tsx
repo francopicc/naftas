@@ -17,6 +17,7 @@ export const maxDuration = 60;
 interface Combustible {
   precio: number;
   fecha_vigencia: string;
+  nombre_combustible: string;
 }
 
 interface Empresa {
@@ -42,6 +43,7 @@ interface SelectedFuel {
   empresa: string;
   combustible: Combustible | null;
   tipoCombustible: string | null;
+  ciudad: string;
 }
 
 const calcularIndicadorEmpresa = (empresa: Empresa, promedioGeneral: number, promedioFechaGeneral: number): number => {
@@ -64,7 +66,7 @@ const calcularIndicadorEmpresa = (empresa: Empresa, promedioGeneral: number, pro
 
   const diferenciaFecha = (fechaPromedioEmpresa - promedioFechaGeneral) / (1000 * 60 * 60 * 24);
   const puntajeFecha = 50 + (diferenciaFecha * 3);
-  const puntajeFechaAjustado = Math.max(0, Math.min(100, puntajeFecha)) * 0.4;
+  const puntajeFechaAjustado = Math.max(0, Math.min(100, puntajeFecha)) * 0.5;
 
   return puntajePrecioAjustado + puntajeFechaAjustado;
 };
@@ -84,10 +86,11 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState("BERISSO");
   const [selectedFuel, setSelectedFuel] = useState<SelectedFuel>({
-    isOpen: false,
-    empresa: '',
-    combustible: null,
-    tipoCombustible: null
+    isOpen: false, 
+    empresa: '', 
+    combustible: null, 
+    tipoCombustible: null, 
+    ciudad: '' // Asegúrate de que esta propiedad esté incluida
   });
 
   const fetchData = async () => {
@@ -198,7 +201,6 @@ export default function Home() {
                           </div>
                           <div>
                             <h2 className="text-xl font-semibold text-gray-900">{empresaNombre}</h2>
-                            <p className="text-sm text-gray-500">{ciudad}</p>
                           </div>
                         </div>
                         <div className={`flex items-center space-x-1 ${colorIndicador}`}>
@@ -230,9 +232,10 @@ export default function Home() {
                               className="px-4 rounded flex items-center space-x-2 hover:bg-gray-50 transition-colors"
                               onClick={() => setSelectedFuel({
                                 isOpen: true,
-                                empresa: empresaNombre,
+                                empresa: empresaNombre, // Asegúrate de que esta variable esté definida
                                 combustible,
-                                tipoCombustible
+                                tipoCombustible,
+                                ciudad: selectedFuel.ciudad || '' // Asegúrate de que esta propiedad esté incluida
                               })}
                             >
                               <p className="font-medium text-medium text-gray-900 min-w-[5em] max-w-[5em]">${combustible.precio} /l</p>
@@ -265,9 +268,17 @@ export default function Home() {
       {selectedFuel.isOpen && selectedFuel.combustible && (
         <BottomSheet
           isOpen={selectedFuel.isOpen}
-          onClose={() => setSelectedFuel({ isOpen: false, empresa: '', combustible: null, tipoCombustible: null })}
+          onClose={() => setSelectedFuel({ 
+            isOpen: false, 
+            empresa: '', 
+            combustible: null, 
+            tipoCombustible: null, 
+            ciudad: '' // Asegúrate de que esta propiedad esté incluida
+          })}
           empresa={selectedFuel.empresa}
           combustible={selectedFuel.combustible}
+          nombreCombustible={selectedFuel.combustible?.nombre_combustible || ''} // Asegúrate de que esta propiedad exista
+          ciudad={selectedFuel.ciudad || ''} // Asegúrate de que esta propiedad exista
           tipoCombustible={selectedFuel.tipoCombustible || ''}
         />
       )}

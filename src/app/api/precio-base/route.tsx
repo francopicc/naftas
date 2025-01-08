@@ -33,14 +33,14 @@ const getNombreCombustible = (tipoCombustible: number, empresa: string): string 
       PUMA: "MAX Premium",
     },
   };
-  const tipoCombustibleKey = tipoCombustible.toString();
+  const tipoCombustibleKey = tipoCombustible.toString(); // Asegúrate de que esto sea una cadena
 
-  if (nombresCombustibles[tipoCombustibleKey]) {
-    if (typeof nombresCombustibles[tipoCombustibleKey] === "object") {
-      const nombreEmpresa = (nombresCombustibles[tipoCombustibleKey] as {[key: string]: string})[empresa];
+  if (nombresCombustibles[Number(tipoCombustibleKey)]) { // Convertir a número
+    if (typeof nombresCombustibles[Number(tipoCombustibleKey)] === "object") {
+      const nombreEmpresa = (nombresCombustibles[Number(tipoCombustibleKey)] as { [key: string]: string })[empresa];
       return nombreEmpresa || "Tipo de Combustible Desconocido";
     } else {
-      return nombresCombustibles[tipoCombustibleKey] as string;
+      return nombresCombustibles[Number(tipoCombustibleKey)] as string; // Convertir a número
     }
   } else {
     return "Tipo de Combustible Desconocido";
@@ -103,11 +103,11 @@ export async function obtenerPreciosActualizadosPorCiudad(ciudad: string) {
       }, {});
 
       // Seleccionar el precio más reciente por producto dentro de cada empresa bandera y localidad
-      const latestPrices = Object.keys(groupedData).reduce((result: { [localidad: string]: { coordenadas: { latitud: number | null; longitud: number | null }; empresas: { [empresabandera: string]: { [producto: string]: { precio: number; nombre_combustible: string } } } } }, localidad) => {
+      const latestPrices = Object.keys(groupedData).reduce((result: { [localidad: string]: { coordenadas: { latitud: number | null; longitud: number | null }; empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; } } } } }, localidad) => {
         result[localidad] = {
           coordenadas: groupedData[localidad].coordenadas,
-          empresas: Object.keys(groupedData[localidad].empresas).reduce((empresas: { [empresabandera: string]: { [producto: string]: { precio: number; nombre_combustible: string } } }, empresabandera) => {
-            empresas[empresabandera] = Object.keys(groupedData[localidad].empresas[empresabandera]).reduce((productos: { [producto: string]: { precio: number; nombre_combustible: string } }, producto) => {
+          empresas: Object.keys(groupedData[localidad].empresas).reduce((empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; } } }, empresabandera) => {
+            empresas[empresabandera] = Object.keys(groupedData[localidad].empresas[empresabandera]).reduce((productos: { [producto: string]: { precio: number; fecha_vigencia: string; } }, producto) => {
               const precios = groupedData[localidad].empresas[empresabandera][producto];
 
               // Ordenar los precios por fecha, de más reciente a más antigua
@@ -115,13 +115,13 @@ export async function obtenerPreciosActualizadosPorCiudad(ciudad: string) {
                 const currentDate = new Date(current.fecha_vigencia);
                 const latestDate = new Date(latest.fecha_vigencia);
                 return currentDate > latestDate ? current : latest;
-              });
+              });  
 
-              // Reemplazar el nombre del combustible con el precio
+              // Reemplazar el nombre del combustible con el precio y asegurar la inclusión de la fecha de vigencia
               productos[latestPrice.nombre_combustible] = {
                 precio: latestPrice.precio,
                 fecha_vigencia: latestPrice.fecha_vigencia
-              }
+              };
               return productos;
             }, {});
 

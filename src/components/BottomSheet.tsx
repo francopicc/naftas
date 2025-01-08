@@ -39,7 +39,7 @@ const BottomSheet = ({
   empresa, 
   combustible, 
   nombreCombustible,
-  ciudad 
+  ciudad
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -47,6 +47,7 @@ const BottomSheet = ({
   combustible: Combustible;
   nombreCombustible: string;
   ciudad: string;
+  tipoCombustible: string;
 }) => {
   const [litros, setLitros] = useState('');
   const [copiado, setCopiado] = useState(false);
