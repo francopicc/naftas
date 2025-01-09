@@ -116,7 +116,6 @@ export default function Home() {
 
   useEffect(() => {
     const storedCity = localStorage.getItem('userCity');
-    console.log(storedCity)
     if (storedCity) {
       setSelectedZone(storedCity);
       setIsInitialized(true);
@@ -134,12 +133,6 @@ export default function Home() {
   const handleZoneChange = (zone: string) => {
     setSelectedZone(zone);
     setIsSettingsOpen(false);
-  };
-
-  const handleLocationSet = (latitude: number, longitude: number) => {
-    const zone = `${latitude},${longitude}`;
-    setSelectedZone(zone);
-    setIsLocationModalOpen(false);
   };
 
   const calcularPromediosGenerales = () => {
@@ -167,7 +160,7 @@ export default function Home() {
     if (responseData) {
       calcularPromediosGenerales();
     }
-  }, [responseData]);
+  }, [responseData, selectedZone]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -310,12 +303,8 @@ export default function Home() {
             isOpen={isLocationModalOpen}
             onClose={() => setIsLocationModalOpen(false)}
             onLocationSet={(zone: string) => {
-                const [latitude, longitude] = zone.split(',').map(Number); // Asegúrate de que 'zone' sea una cadena válida
-                if (!isNaN(latitude) && !isNaN(longitude)) { // Verificar que los valores sean válidos
-                    handleLocationSet(latitude, longitude);
-                } else {
-                    console.error("Latitud o longitud no válidas:", latitude, longitude);
-                }
+              setSelectedZone(zone);
+              fetchData(zone)
             }}
           onLoading={setIsLoading}
       />
