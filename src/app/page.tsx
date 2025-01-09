@@ -10,6 +10,7 @@ import { TrendingUp, TrendingDown, Settings, ChevronRight } from 'lucide-react';
 import BottomSheet from "@/components/BottomSheet";
 import SettingsModal from "@/components/SettingsModal";
 import SkeletonCard from "@/components/SkeletonCard";
+import LocationRequestModal from "@/components/LocationRequestModal";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -84,19 +85,22 @@ export default function Home() {
   const [promedioFechaGeneral, setPromedioFechaGeneral] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [selectedZone, setSelectedZone] = useState("BERISSO");
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [selectedFuel, setSelectedFuel] = useState<SelectedFuel>({
     isOpen: false, 
     empresa: '', 
     combustible: null, 
     tipoCombustible: null, 
-    ciudad: '' // Asegúrate de que esta propiedad esté incluida
+    ciudad: ''
   });
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = async (ciudad: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get(`/api/precio-base?ciudad=${selectedZone}`);
+      console.log(ciudad)
+      const response = await axios.get(`/api/precio-base?ciudad=${ciudad}`);
       setResponseData(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -111,8 +115,32 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [selectedZone]);
+    const storedCity = localStorage.getItem('userCity');
+    console.log(storedCity)
+    if (storedCity) {
+      setSelectedZone(storedCity);
+      setIsInitialized(true);
+    } else {
+      setIsLocationModalOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized && selectedZone) {
+      fetchData(selectedZone);
+    }
+  }, [selectedZone, isInitialized]);
+
+  const handleZoneChange = (zone: string) => {
+    setSelectedZone(zone);
+    setIsSettingsOpen(false);
+  };
+
+  const handleLocationSet = (latitude: number, longitude: number) => {
+    const zone = `${latitude},${longitude}`;
+    setSelectedZone(zone);
+    setIsLocationModalOpen(false);
+  };
 
   const calcularPromediosGenerales = () => {
     if (!responseData || !Object.keys(responseData).length) return;
@@ -121,7 +149,6 @@ export default function Home() {
     let cantidadPreciosTotal = 0;
     let sumaFechasTotal = 0;
 
-    // Iteramos sobre todas las ciudades en la zona
     Object.values(responseData).forEach((ciudad) => {
       Object.values(ciudad.empresas).forEach((empresa) => {
         Object.values(empresa).forEach((combustible) => {
@@ -141,10 +168,6 @@ export default function Home() {
       calcularPromediosGenerales();
     }
   }, [responseData]);
-
-  const handleZoneChange = (zone: string) => {
-    setSelectedZone("BERISSO");
-  };
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -232,10 +255,10 @@ export default function Home() {
                               className="px-4 rounded flex items-center space-x-2 hover:bg-gray-50 transition-colors"
                               onClick={() => setSelectedFuel({
                                 isOpen: true,
-                                empresa: empresaNombre, // Asegúrate de que esta variable esté definida
+                                empresa: empresaNombre,
                                 combustible,
                                 tipoCombustible,
-                                ciudad: selectedFuel.ciudad || '' // Asegúrate de que esta propiedad esté incluida
+                                ciudad
                               })}
                             >
                               <p className="font-medium text-medium text-gray-900 min-w-[5em] max-w-[5em]">${combustible.precio} /l</p>
@@ -273,15 +296,29 @@ export default function Home() {
             empresa: '', 
             combustible: null, 
             tipoCombustible: null, 
-            ciudad: '' // Asegúrate de que esta propiedad esté incluida
+            ciudad: ''
           })}
           empresa={selectedFuel.empresa}
           combustible={selectedFuel.combustible}
-          nombreCombustible={selectedFuel.combustible?.nombre_combustible || ''} // Asegúrate de que esta propiedad exista
-          ciudad={selectedFuel.ciudad || ''} // Asegúrate de que esta propiedad exista
+          nombreCombustible={selectedFuel.combustible?.nombre_combustible || ''}
+          ciudad={selectedFuel.ciudad}
           tipoCombustible={selectedFuel.tipoCombustible || ''}
         />
       )}
+
+          <LocationRequestModal
+            isOpen={isLocationModalOpen}
+            onClose={() => setIsLocationModalOpen(false)}
+            onLocationSet={(zone: string) => {
+                const [latitude, longitude] = zone.split(',').map(Number); // Asegúrate de que 'zone' sea una cadena válida
+                if (!isNaN(latitude) && !isNaN(longitude)) { // Verificar que los valores sean válidos
+                    handleLocationSet(latitude, longitude);
+                } else {
+                    console.error("Latitud o longitud no válidas:", latitude, longitude);
+                }
+            }}
+          onLoading={setIsLoading}
+      />
     </main>
   );
 }
