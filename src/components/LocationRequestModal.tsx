@@ -34,8 +34,6 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
       });
 
       const { latitude, longitude } = position.coords;
-      console.log(latitude)
-      console.log(longitude)
       const response = await axios.get(`/api/location?lat=${latitude}&long=${longitude}`);
       setSuggestedCity(response.data.zone);
     } catch (error) {
@@ -46,9 +44,14 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      handleLocationRequest(); // Llama a la función de solicitud de ubicación al abrir el modal
+    }
+  }, [isOpen]);
+
   const handleConfirmCity = () => {
     if (suggestedCity) {
-      console.log(suggestedCity)
       onLoading(true); // Activar loading antes de cerrar el modal
       onLocationSet(suggestedCity);
       localStorage.setItem('userCity', suggestedCity);
