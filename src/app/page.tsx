@@ -130,10 +130,20 @@ export default function Home() {
     }
   }, [selectedZone, isInitialized]);
 
-  const handleZoneChange = (zone: string) => {
-    setSelectedZone(zone);
-    setIsSettingsOpen(false);
+  const handleZoneChange = async (zone: string) => {
+    if (!zone) return;
+    
+    setIsLoading(true);
+    try {
+      await fetchData(zone);
+      setSelectedZone(zone);
+    } catch (error) {
+      console.error("Error al cambiar la zona:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
+  
 
   const calcularPromediosGenerales = () => {
     if (!responseData || !Object.keys(responseData).length) return;
@@ -279,6 +289,7 @@ export default function Home() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onZoneChange={handleZoneChange}
+        onData={setResponseData}
       />
 
       {selectedFuel.isOpen && selectedFuel.combustible && (
