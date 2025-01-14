@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { formatDistanceToNow, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Settings, ChevronRight } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import BottomSheet from "@/components/BottomSheet";
 import SettingsModal from "@/components/SettingsModal";
 import SkeletonCard from "@/components/SkeletonCard";
@@ -73,13 +71,6 @@ const calcularIndicadorEmpresa = (empresa: Empresa, promedioGeneral: number, pro
   return puntajePrecioAjustado + puntajeFechaAjustado;
 };
 
-const getColorIndicador = (puntaje: number): string => {
-  if (puntaje >= 50) return "text-green-400 bg-green-100 py-1 px-2 rounded";
-  if (puntaje >= 40) return "text-yellow-500 bg-yellow-200 py-1 px-2 rounded";
-  if (puntaje >= 20) return "text-orange-500 bg-orange-200 py-1 px-2 rounded";
-  return "text-red-500";
-};
-
 export default function Home() {
   const [responseData, setResponseData] = useState<APIResponse | null>(null);
   const [promedioGeneral, setPromedioGeneral] = useState<number>(0);
@@ -108,11 +99,6 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatDateDistance = (dateString: string): string => {
-    const date = parseISO(dateString);
-    return formatDistanceToNow(date, { addSuffix: true, locale: es });
   };
 
   useEffect(() => {

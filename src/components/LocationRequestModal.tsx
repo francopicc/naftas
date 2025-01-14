@@ -76,8 +76,8 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
         <>
           <div className="text-center">
             <div className="mb-4 flex justify-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <MapPin size={24} className="text-blue-600" />
+              <div className="w-12 h-12 bg-stone-100 rounded-full flex items-center justify-center">
+                <MapPin size={24} className="text-stone-600" />
               </div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -93,7 +93,7 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
             whileTap={{ scale: 0.98 }}
             onClick={handleLocationRequest}
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full py-3 px-4 bg-stone-800 text-white rounded-lg font-medium flex items-center justify-center space-x-2 hover:bg-stone-900 transition-colors disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin size={20} />}
             <span>{isLoading ? "Obteniendo ubicación..." : "Permitir acceso"}</span>
@@ -105,7 +105,7 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               ¿Es esta tu ciudad?
             </h3>
-            <p className="text-xl font-bold text-blue-600 mb-6">
+            <p className="text-xl font-bold text-stone-800 mb-6">
               {suggestedCity}
             </p>
           </div>
@@ -115,7 +115,7 @@ const LocationRequestModal = ({ isOpen, onClose, onLocationSet, onLoading }: Loc
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleConfirmCity}
-              className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="flex-1 py-3 px-4 bg-stone-800 text-white rounded-lg font-medium hover:bg-stone-900 transition-colors"
             >
               Sí, es correcta
             </motion.button>
