@@ -180,7 +180,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData}: SettingsModalPr
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
           ¿Confirmas esta ubicación?
         </h3>
-        <p className="text-xl font-bold text-blue-600 mb-6">
+        <p className="text-xl font-bold text-stone-800 mb-6">
           {suggestedCity}
         </p>
       </div>
@@ -190,7 +190,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData}: SettingsModalPr
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleConfirmCity}
-          className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="flex-1 py-3 px-4 bg-stone-800 text-white rounded-lg font-medium hover:bg-stone-900 transition-colors"
         >
           Confirmar
         </motion.button>
