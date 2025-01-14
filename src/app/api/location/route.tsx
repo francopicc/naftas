@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 const config = {
   url: "http://datos.energia.gob.ar/api/3/action/datastore_search",
   options: {

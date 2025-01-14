@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 // Helper function to get fuel name
 type NombresCombustibles = {
   [key: number]: { [key: string]: string } | string;
