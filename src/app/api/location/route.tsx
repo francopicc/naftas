@@ -12,6 +12,7 @@ const config = {
     },
     body: JSON.stringify({
       resource_id: "80ac25de-a44a-4445-9215-090cf55cfda5",
+      filters: { empresabandera: "YPF" },
       limit: 40000,
       offset: 0
     })
