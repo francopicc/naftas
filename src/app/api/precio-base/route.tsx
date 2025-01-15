@@ -99,7 +99,7 @@ const obtenerPreciosActualizadosPorCiudad = async (ciudad: string) => {
 
       const records = data.result.records;
 
-      const groupedData = records.reduce((acc: { [localidad: string]: { empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; nombre_combustible: string }[] } }; coordenadas: { latitud: number | null; longitud: number | null } } }, record) => {
+      const groupedData = records.reduce((acc: { [localidad: string]: { empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string }[] } }; coordenadas: { latitud: number | null; longitud: number | null } } }, record) => {
         const { localidad, empresabandera, producto, precio, fecha_vigencia, latitud, longitud, idproducto } = record;
 
         const nombreCombustible = getNombreCombustible(idproducto, empresabandera);
