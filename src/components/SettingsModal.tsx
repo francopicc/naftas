@@ -79,13 +79,8 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData}: SettingsModalPr
       const response = await axios.get(`/api/location?lat=${latitude}&long=${longitude}`);
       
       if (response.data.zone) {
-        const success = await fetchDataForCity(response.data.zone);
-        if (success) {
-          setSuggestedCity(response.data.zone);
-          setShowCityConfirmation(true);
-        } else {
-          throw new Error('No se pudieron obtener los datos de la zona');
-        }
+        setSuggestedCity(response.data.zone);
+        setShowCityConfirmation(true);
       } else {
         throw new Error('No se pudo determinar la zona');
       }
@@ -143,30 +138,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData}: SettingsModalPr
   };
 
   const handleRejectCity = () => {
-    setSuggestedCity(null);
     setShowCityConfirmation(false);
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const success = await fetchDataForCity(zona);
-      if (success) {
-        updateUserCity(zona);
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          onClose();
-        }, 1000);
-      } else {
-        setLocationError('Error al obtener datos de la zona');
-      }
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      setLocationError('Error al guardar los cambios');
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const cityConfirmationContent = (
