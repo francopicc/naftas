@@ -8,35 +8,35 @@ type NombresCombustibles = {
   [key: number]: { [key: string]: string } | string;
 };
 
-const getNombreCombustible = (tipoCombustible: number, empresa: string): string => {
-  const nombresCombustibles: NombresCombustibles = {
-    19: {
-      YPF: "DIESEL500",
-      "SHELL C.A.P.S.A.": "Shell Evolux Diesel",
-      AXION: "AXION Diesel X10",
-      PUMA: "PUMA Diesel",
-    },
-    21: {
-      YPF: "INFINIA DIESEL",
-      "SHELL C.A.P.S.A.": "Shell V-Power Diesel",
-      AXION: "QUANTIUM Diesel X10",
-      PUMA: "ION PUMA Diesel",
-    },
-    6: "GNC",
-    2: {
-      YPF: "SUPER",
-      "SHELL C.A.P.S.A.": "Shell Super",
-      AXION: "Axion SUPER",
-      PUMA: "PUMA Super",
-    },
-    3: {
-      YPF: "INFINIA",
-      "SHELL C.A.P.S.A.": "Shell V-Power",
-      AXION: "QUANTIUM",
-      PUMA: "MAX Premium",
-    },
-  };
+const nombresCombustibles: NombresCombustibles = {
+  19: {
+    YPF: "DIESEL500",
+    "SHELL C.A.P.S.A.": "Shell Evolux Diesel",
+    AXION: "AXION Diesel X10",
+    PUMA: "PUMA Diesel",
+  },
+  21: {
+    YPF: "INFINIA DIESEL",
+    "SHELL C.A.P.S.A.": "Shell V-Power Diesel",
+    AXION: "QUANTIUM Diesel X10",
+    PUMA: "ION PUMA Diesel",
+  },
+  6: "GNC",
+  2: {
+    YPF: "SUPER",
+    "SHELL C.A.P.S.A.": "Shell Super",
+    AXION: "Axion SUPER",
+    PUMA: "PUMA Super",
+  },
+  3: {
+    YPF: "INFINIA",
+    "SHELL C.A.P.S.A.": "Shell V-Power",
+    AXION: "QUANTIUM",
+    PUMA: "MAX Premium",
+  },
+};
 
+const getNombreCombustible = (tipoCombustible: number, empresa: string): string => {
   const tipoCombustibleKey = tipoCombustible.toString();
 
   if (nombresCombustibles[Number(tipoCombustibleKey)]) {
@@ -49,6 +49,31 @@ const getNombreCombustible = (tipoCombustible: number, empresa: string): string 
   } else {
     return "Tipo de Combustible Desconocido";
   }
+};
+
+// Function to sort fuels in the desired order
+const sortFuels = (fuels: { [key: string]: any }, empresa: string): { [key: string]: any } => {
+  const fuelOrder = [
+    getNombreCombustible(2, empresa),  // SUPER
+    getNombreCombustible(3, empresa),  // INFINIA
+    getNombreCombustible(6, empresa),  // GNC
+    getNombreCombustible(19, empresa), // DIESEL500
+    getNombreCombustible(21, empresa), // INFINIA DIESEL
+  ];
+
+  return Object.keys(fuels)
+    .sort((a, b) => {
+      const indexA = fuelOrder.indexOf(a);
+      const indexB = fuelOrder.indexOf(b);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    })
+    .reduce((obj: { [key: string]: any }, key) => {
+      obj[key] = fuels[key];
+      return obj;
+    }, {});
 };
 
 // Function to get updated prices by city
@@ -93,11 +118,11 @@ const obtenerPreciosActualizadosPorCiudad = async (ciudad: string) => {
           acc[localidad].empresas[empresabandera] = {};
         }
 
-        if (!acc[localidad].empresas[empresabandera][producto]) {
-          acc[localidad].empresas[empresabandera][producto] = [];
+        if (!acc[localidad].empresas[empresabandera][nombreCombustible]) {
+          acc[localidad].empresas[empresabandera][nombreCombustible] = [];
         }
 
-        acc[localidad].empresas[empresabandera][producto].push({ precio, fecha_vigencia, nombre_combustible: nombreCombustible });
+        acc[localidad].empresas[empresabandera][nombreCombustible].push({ precio, fecha_vigencia });
 
         return acc;
       }, {});
@@ -106,21 +131,24 @@ const obtenerPreciosActualizadosPorCiudad = async (ciudad: string) => {
         result[localidad] = {
           coordenadas: groupedData[localidad].coordenadas,
           empresas: Object.keys(groupedData[localidad].empresas).reduce((empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; } } }, empresabandera) => {
-            empresas[empresabandera] = Object.keys(groupedData[localidad].empresas[empresabandera]).reduce((productos: { [producto: string]: { precio: number; fecha_vigencia: string; } }, producto) => {
-              const precios = groupedData[localidad].empresas[empresabandera][producto];
+            empresas[empresabandera] = sortFuels(
+              Object.keys(groupedData[localidad].empresas[empresabandera]).reduce((productos: { [producto: string]: { precio: number; fecha_vigencia: string; } }, producto) => {
+                const precios = groupedData[localidad].empresas[empresabandera][producto];
 
-              const latestPrice = precios.reduce((latest: { precio: number; fecha_vigencia: string; nombre_combustible: string }, current: { precio: number; fecha_vigencia: string; nombre_combustible: string }) => {
-                const currentDate = new Date(current.fecha_vigencia);
-                const latestDate = new Date(latest.fecha_vigencia);
-                return currentDate > latestDate ? current : latest;
-              });
+                const latestPrice = precios.reduce((latest, current) => {
+                  const currentDate = new Date(current.fecha_vigencia);
+                  const latestDate = new Date(latest.fecha_vigencia);
+                  return currentDate > latestDate ? current : latest;
+                });
 
-              productos[latestPrice.nombre_combustible] = {
-                precio: latestPrice.precio,
-                fecha_vigencia: latestPrice.fecha_vigencia,
-              };
-              return productos;
-            }, {});
+                productos[producto] = {
+                  precio: latestPrice.precio,
+                  fecha_vigencia: latestPrice.fecha_vigencia,
+                };
+                return productos;
+              }, {}),
+              empresabandera
+            );
 
             return empresas;
           }, {}),
@@ -169,3 +197,4 @@ export async function POST(req: Request) {
   const result = await obtenerPreciosActualizadosPorCiudad(ciudad);
   return NextResponse.json(result);
 }
+
