@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { calculateDistance } from "@/utils/calculateDistance";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -46,25 +47,6 @@ const config = {
   }
 };
 
-// Helper function to calculate distance between two points
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius of the earth in km
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-  ; 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  const d = R * c; // Distance in km
-  return d;
-}
-
-function deg2rad(deg: number) {
-  return deg * (Math.PI/180);
-}
-
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const lat = parseFloat(url.searchParams.get("lat") || "");
@@ -84,22 +66,3 @@ export async function GET(req: Request) {
     return NextResponse.json(errorResult, { status: 500 });
   }
 }
-
-export async function POST(req: Request) {
-  const { lat, long } = await req.json();
-
-  if (typeof lat !== 'number' || typeof long !== 'number') {
-    return NextResponse.json({ error: "Parámetros 'lat' y 'long' son requeridos y deben ser números válidos" }, { status: 400 });
-  }
-
-  try {
-    const response = await fetch(config.url, config.options);
-    const data = await response.json();
-    const result = config.processResponse(data, lat, long);
-    return NextResponse.json(result);
-  } catch (error) {
-    const errorResult = config.handleError(error);
-    return NextResponse.json(errorResult, { status: 500 });
-  }
-}
-

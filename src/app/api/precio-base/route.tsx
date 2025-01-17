@@ -1,55 +1,8 @@
 import { NextResponse } from "next/server";
+import { getNombreCombustible } from '@/utils/getNombreCombustible'
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-// Helper function to get fuel name
-type NombresCombustibles = {
-  [key: number]: { [key: string]: string } | string;
-};
-
-const nombresCombustibles: NombresCombustibles = {
-  19: {
-    YPF: "DIESEL500",
-    "SHELL C.A.P.S.A.": "Shell Evolux Diesel",
-    AXION: "AXION Diesel X10",
-    PUMA: "PUMA Diesel",
-  },
-  21: {
-    YPF: "INFINIA DIESEL",
-    "SHELL C.A.P.S.A.": "Shell V-Power Diesel",
-    AXION: "QUANTIUM Diesel X10",
-    PUMA: "ION PUMA Diesel",
-  },
-  6: "GNC",
-  2: {
-    YPF: "SUPER",
-    "SHELL C.A.P.S.A.": "Shell Super",
-    AXION: "Axion SUPER",
-    PUMA: "PUMA Super",
-  },
-  3: {
-    YPF: "INFINIA",
-    "SHELL C.A.P.S.A.": "Shell V-Power",
-    AXION: "QUANTIUM",
-    PUMA: "MAX Premium",
-  },
-};
-
-const getNombreCombustible = (tipoCombustible: number, empresa: string): string => {
-  const tipoCombustibleKey = tipoCombustible.toString();
-
-  if (nombresCombustibles[Number(tipoCombustibleKey)]) {
-    if (typeof nombresCombustibles[Number(tipoCombustibleKey)] === "object") {
-      const nombreEmpresa = (nombresCombustibles[Number(tipoCombustibleKey)] as { [key: string]: string })[empresa];
-      return nombreEmpresa || "Tipo de Combustible Desconocido";
-    } else {
-      return nombresCombustibles[Number(tipoCombustibleKey)] as string;
-    }
-  } else {
-    return "Tipo de Combustible Desconocido";
-  }
-};
 
 // Function to sort fuels in the desired order
 const sortFuels = (fuels: { [key: string]: any }, empresa: string): { [key: string]: any } => {
@@ -186,15 +139,3 @@ export async function GET(req: Request) {
   const result = await obtenerPreciosActualizadosPorCiudad(ciudad);
   return NextResponse.json(result);
 }
-
-export async function POST(req: Request) {
-  const { ciudad } = await req.json();
-
-  if (!ciudad) {
-    return NextResponse.json({ error: "Parámetro 'ciudad' es requerido" }, { status: 400 });
-  }
-
-  const result = await obtenerPreciosActualizadosPorCiudad(ciudad);
-  return NextResponse.json(result);
-}
-

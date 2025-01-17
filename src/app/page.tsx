@@ -6,11 +6,13 @@ import Link from "next/link";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Settings, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Settings, ChevronRight, Navigation } from 'lucide-react';
 import BottomSheet from "@/components/BottomSheet";
 import SettingsModal from "@/components/SettingsModal";
 import SkeletonCard from "@/components/SkeletonCard";
 import LocationRequestModal from "@/components/LocationRequestModal";
+import { calcularIndicadorEmpresa } from "@/utils/calcularIndicador";
+import { getColorIndicador } from "@/utils/getColorIndicator";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -46,38 +48,6 @@ interface SelectedFuel {
   tipoCombustible: string | null;
   ciudad: string;
 }
-
-const calcularIndicadorEmpresa = (empresa: Empresa, promedioGeneral: number, promedioFechaGeneral: number): number => {
-  let sumaPreciosEmpresa = 0;
-  let cantidadPrecios = 0;
-  let sumaFechasActualizacion = 0;
-
-  Object.entries(empresa).forEach(([_, combustible]) => {
-    sumaPreciosEmpresa += combustible.precio;
-    sumaFechasActualizacion += new Date(combustible.fecha_vigencia).getTime();
-    cantidadPrecios++;
-  });
-
-  const precioPromedioEmpresa = sumaPreciosEmpresa / cantidadPrecios;
-  const fechaPromedioEmpresa = sumaFechasActualizacion / cantidadPrecios;
-
-  const diferenciaPrecio = ((promedioGeneral - precioPromedioEmpresa) / promedioGeneral) * 100;
-  const puntajePrecio = 50 + (diferenciaPrecio * 2.5);
-  const puntajePrecioAjustado = Math.max(0, Math.min(100, puntajePrecio)) * 0.6;
-
-  const diferenciaFecha = (fechaPromedioEmpresa - promedioFechaGeneral) / (1000 * 60 * 60 * 24);
-  const puntajeFecha = 50 + (diferenciaFecha * 3);
-  const puntajeFechaAjustado = Math.max(0, Math.min(100, puntajeFecha)) * 0.5;
-
-  return puntajePrecioAjustado + puntajeFechaAjustado;
-};
-
-const getColorIndicador = (puntaje: number): string => {
-  if (puntaje >= 50) return "text-green-400 bg-green-100 py-1 px-2 rounded";
-  if (puntaje >= 40) return "text-yellow-500 bg-yellow-200 py-1 px-2 rounded";
-  if (puntaje >= 20) return "text-orange-500 bg-orange-200 py-1 px-2 rounded";
-  return "text-red-500";
-};
 
 export default function Home() {
   const [responseData, setResponseData] = useState<APIResponse | null>(null);
@@ -144,7 +114,6 @@ export default function Home() {
     }
   };
   
-
   const calcularPromediosGenerales = () => {
     if (!responseData || !Object.keys(responseData).length) return;
     
@@ -199,6 +168,27 @@ export default function Home() {
               <Settings size={24} className="text-gray-600" />
             </motion.button>
           </div>
+          <motion.div
+            className="flex flex-row space-x-2 px-3 py-1.5 text-stone-600 rounded border border-stone-100 bg-white w-fit text-sm mb-[0.5em] md:mx-0 mx-auto shadow-sm"
+            onClick={() => setIsSettingsOpen(true)}
+            whileHover={{
+              scale: 1.015,
+              boxShadow: "0px 2px 12px rgba(0, 0, 0, 0.1)",
+              backgroundColor: "#f9fafb",
+            }}
+            whileTap={{
+              scale: 0.95,
+              boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            <Navigation size={20} />
+            {selectedZone ? (
+              <p>Estas viendo precios de: <span className="font-semibold">{selectedZone}</span></p>
+            ) : (
+              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+            )}
+          </motion.div>
+
 
           <div className="grid gap-6 md:grid-cols-2">
             {isLoading ? (
