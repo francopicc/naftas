@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Bookmark, AlertCircle } from "lucide-react";
 
 interface Coordenadas {
   latitud: number;
@@ -40,7 +40,9 @@ const BottomSheet = ({
   combustible, 
   nombreCombustible,
   tipoCombustible,
-  ciudad
+  ciudad,
+  onSuscribe,
+  esSuscrito
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -49,15 +51,24 @@ const BottomSheet = ({
   nombreCombustible: string;
   ciudad: string;
   tipoCombustible: string;
+  onSuscribe?: (litros: number, total: number) => void;
+  esSuscrito?: boolean;
 }) => {
   const [litros, setLitros] = useState('');
   const [copiado, setCopiado] = useState(false);
   const total = parseFloat(litros) * combustible.precio || 0;
+  const litrosInvalidos = litros !== '' && (parseFloat(litros) <= 0);
 
   const copiarAlPortapapeles = () => {
     navigator.clipboard.writeText(total.toFixed(2));
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  };
+
+  const guardarSuscripcion = () => {
+    if (onSuscribe && litros && parseFloat(litros) > 0) {
+      onSuscribe(parseFloat(litros), total);
+    }
   };
 
   return (
@@ -103,9 +114,15 @@ const BottomSheet = ({
                   type="number"
                   value={litros}
                   onChange={(e) => setLitros(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 border ${litrosInvalidos ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'} rounded-lg focus:ring-2 focus:border-transparent`}
                   placeholder="Ingrese cantidad de litros"
                 />
+                {litrosInvalidos && (
+                  <div className="flex items-center mt-1 text-red-500 text-sm">
+                    <AlertCircle size={14} className="mr-1" />
+                    <span>Ingrese un valor mayor a 0</span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -130,6 +147,19 @@ const BottomSheet = ({
                   Última actualización: {new Date(combustible.fecha_vigencia).toLocaleDateString()}
                 </div>
               </div>
+              
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                onClick={guardarSuscripcion}
+                className={`w-full flex items-center justify-center gap-2 ${esSuscrito ? 'bg-white hover:bg-gray-100 text-black border border-gray-300' : 'bg-[#010101] hover:bg-black/60 text-white'} py-3 px-4 rounded-lg font-medium transition-colors ${(!litros || parseFloat(litros) <= 0) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!litros || parseFloat(litros) <= 0}
+              >
+                {esSuscrito ? <Bookmark size={20} fill="black" /> : <Bookmark size={20} />}
+                <span>{esSuscrito ? 'Cotización guardada' : 'Guardar cotización'}</span>
+              </motion.button>
+              {!litros && (
+                <p className="text-center text-sm text-gray-500">Ingrese la cantidad de litros para guardar</p>
+              )}
             </div>
           </motion.div>
         </>
