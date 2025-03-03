@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { formatDistanceToNow, parseISO, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Settings, ChevronRight, Navigation, Bookmark, X, Bell } from 'lucide-react';
+import { TrendingUp, TrendingDown, Settings, ChevronRight, Navigation, Bookmark, X, Bell, AlertTriangle } from 'lucide-react';
 import BottomSheet from "@/components/BottomSheet";
 import SettingsModal from "@/components/SettingsModal";
 import SkeletonCard from "@/components/SkeletonCard";
@@ -59,6 +59,16 @@ interface Suscripcion {
   total?: number;
 }
 
+interface IncreaseInfo {
+  willBeIncrease: boolean;
+  increase: number;
+  dateOfIncrease: string;
+}
+
+interface IncreasesResponse {
+  [empresa: string]: IncreaseInfo;
+}
+
 const getColorIndicador = (puntaje: number): string => {
   if (puntaje >= 50) return "text-green-400 bg-green-100 py-1 px-2 rounded";
   if (puntaje >= 40) return "text-yellow-500 bg-yellow-200 py-1 px-2 rounded";
@@ -68,6 +78,7 @@ const getColorIndicador = (puntaje: number): string => {
 
 export default function Home() {
   const [responseData, setResponseData] = useState<APIResponse | null>(null);
+  const [increasesData, setIncreasesData] = useState<IncreasesResponse | null>(null);
   const [promedioGeneral, setPromedioGeneral] = useState<number>(0);
   const [promedioFechaGeneral, setPromedioFechaGeneral] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,13 +99,22 @@ export default function Home() {
   const fetchData = async (ciudad: string) => {
     try {
       setIsLoading(true);
-      console.log(ciudad)
+      console.log(ciudad);
       const response = await axios.get(`/api/precio-base?ciudad=${ciudad}`);
       setResponseData(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchIncreases = async () => {
+    try {
+      const response = await axios.get('/api/increases');
+      setIncreasesData(response.data);
+    } catch (error) {
+      console.error("Error fetching increases data:", error);
     }
   };
 
@@ -117,6 +137,9 @@ export default function Home() {
     if (storedSuscripciones) {
       setSuscripciones(JSON.parse(storedSuscripciones));
     }
+
+    // Cargar datos de aumentos
+    fetchIncreases();
   }, []);
 
   useEffect(() => {
@@ -168,6 +191,7 @@ export default function Home() {
     try {
       await fetchData(zone);
       setSelectedZone(zone);
+      localStorage.setItem('userCity', zone);
     } catch (error) {
       console.error("Error al cambiar la zona:", error);
     } finally {
@@ -240,6 +264,39 @@ export default function Home() {
     }, 0);
   };
 
+  // Verificar si hay aumentos futuros
+  const hayAumentosFuturos = () => {
+    if (!increasesData) return false;
+    
+    const now = new Date();
+    return Object.values(increasesData).some(increase => {
+      if (!increase.willBeIncrease) return false;
+      const increaseDate = parseISO(increase.dateOfIncrease);
+      return isAfter(increaseDate, now);
+    });
+  };
+
+  // Obtener el próximo aumento
+  const getProximoAumento = () => {
+    if (!increasesData) return null;
+    
+    const now = new Date();
+    let proximoAumento: { empresa: string; info: IncreaseInfo } | null = null;
+    let fechaMasCercana = new Date(8640000000000000); // Fecha máxima posible
+    
+    Object.entries(increasesData).forEach(([empresa, info]) => {
+      if (!info.willBeIncrease) return;
+      
+      const increaseDate = parseISO(info.dateOfIncrease);
+      if (isAfter(increaseDate, now) && increaseDate < fechaMasCercana) {
+        fechaMasCercana = increaseDate;
+        proximoAumento = { empresa, info };
+      }
+    });
+    
+    return proximoAumento;
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-12">
@@ -282,27 +339,154 @@ export default function Home() {
               </motion.button>
             </div>
           </div>
+
+          {/* Ubicación seleccionada */}
           <motion.div
-            className="flex flex-row space-x-2 px-3 py-1.5 text-stone-600 rounded border border-stone-100 bg-white w-fit text-sm mb-[0.5em] md:mx-0 mx-auto shadow-sm"
-            onClick={() => setIsSettingsOpen(true)}
-            whileHover={{
-              scale: 1.015,
-              boxShadow: "0px 2px 12px rgba(0, 0, 0, 0.1)",
-              backgroundColor: "#f9fafb",
-            }}
-            whileTap={{
-              scale: 0.95,
-              boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.2)",
-            }}
+            className="flex items-center justify-center mb-6 w-full"
           >
-            <Navigation size={20} />
-            {selectedZone ? (
-              <p>Estas viendo precios de: <span className="font-semibold">{selectedZone}</span></p>
-            ) : (
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-            )}
+            <motion.button
+              className="flex items-center space-x-2 px-4 py-2.5 text-stone-700 rounded-md border border-stone-200 bg-white text-sm border border-stone-200 transition-all"
+              onClick={() => setIsSettingsOpen(true)}
+              whileHover={{
+                scale: 1.02,
+                backgroundColor: "#f9fafb",
+              }}
+              whileTap={{
+                scale: 0.98,
+              }}
+            >
+              <Navigation size={18} className="text-stone-500" />
+              {selectedZone ? (
+                <p className="font-medium">Mostrando precios en <span className="font-bold text-stone-900">{selectedZone}</span></p>
+              ) : (
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+              )}
+              <ChevronRight size={16} className="text-stone-400 ml-1" />
+            </motion.button>
           </motion.div>
 
+          {/* Alerta de próximos aumentos */}
+          {increasesData && Object.values(increasesData).some(info => 
+            info.willBeIncrease && 
+            isAfter(parseISO(info.dateOfIncrease), new Date())
+          ) && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6 shadow-sm"
+            >
+              <div className="flex flex-col">
+                {(() => {
+                  // Verificar si todos los aumentos son iguales
+                  const aumentos = Object.entries(increasesData)
+                    .filter(([_, info]) => info.willBeIncrease)
+                    .map(([_, info]) => info.increase);
+                  
+                  const fechas = Object.entries(increasesData)
+                    .filter(([_, info]) => info.willBeIncrease)
+                    .map(([_, info]) => info.dateOfIncrease);
+                  
+                  const todosIguales = aumentos.every(aumento => aumento === aumentos[0]) && 
+                                      fechas.every(fecha => fecha === fechas[0]);
+                  
+                  const empresasConAumento = Object.entries(increasesData)
+                    .filter(([_, info]) => info.willBeIncrease);
+                  
+                  if (todosIguales && empresasConAumento.length > 0) {
+                    // Si todos los aumentos son iguales, mostrar un solo bloque
+                    const [_, infoComun] = empresasConAumento[0];
+                    const fecha = parseISO(infoComun.dateOfIncrease);
+                    const formatoFecha = new Intl.DateTimeFormat('es-AR', { 
+                      day: 'numeric', 
+                      month: 'long'
+                    }).format(fecha);
+                    
+                    return (
+                      <>
+                        <button 
+                          className="flex items-center justify-between w-full p-1 rounded-lg "
+                          onClick={() => {
+                            const detalles = document.getElementById('detalles-aumento');
+                            if (detalles) detalles.classList.toggle('hidden');
+                          }}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <AlertTriangle size={20} className="text-amber-600 flex-shrink-0" />
+                            <h3 className="font-semibold text-amber-800">Próximos aumentos de precios</h3>
+                          </div>
+                          <ChevronRight size={20} className="text-amber-600" />
+                        </button>
+                        
+                        <div id="detalles-aumento" className="hidden mt-3 p-4 bg-white rounded-lg border border-amber-100">
+                          <p className="text-sm text-gray-700 mb-2">
+                            <span className="font-medium">Todas las empresas</span> aumentarán sus precios un 
+                            <span className="text-amber-600 font-bold"> +{infoComun.increase.toFixed(1)}%</span>
+                          </p>
+                          <p className="text-xs text-gray-600">A partir del {formatoFecha}</p>
+                          
+                          <div className="mt-3 pt-3 border-t border-amber-100">
+                            <p className="text-xs text-gray-700 mb-1 font-medium">Empresas afectadas:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {empresasConAumento.map(([empresa]) => (
+                                <span key={empresa} className="text-xs bg-amber-50 px-2 py-1 rounded-full">
+                                  {empresa}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  } else {
+                    // Si los aumentos son diferentes, mostrar dropdown con detalles
+                    return (
+                      <>
+                        <button 
+                          className="flex items-center justify-between w-full p-3 bg-white rounded-lg border border-amber-100 shadow-sm"
+                          onClick={() => {
+                            const detalles = document.getElementById('detalles-aumento');
+                            if (detalles) detalles.classList.toggle('hidden');
+                          }}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <AlertTriangle size={20} className="text-amber-600 flex-shrink-0" />
+                            <h3 className="font-semibold text-amber-800">Próximos aumentos de precios</h3>
+                          </div>
+                          <ChevronRight size={20} className="text-amber-600" />
+                        </button>
+                        
+                        <div id="detalles-aumento" className="hidden mt-3">
+                          <div className="md:grid md:grid-cols-2 flex flex-col gap-3">
+                            {Object.entries(increasesData).map(([empresa, info]) => {
+                              if (!info.willBeIncrease) return null;
+                              
+                              const fecha = parseISO(info.dateOfIncrease);
+                              const formatoFecha = new Intl.DateTimeFormat('es-AR', { 
+                                day: 'numeric', 
+                                month: 'long'
+                              }).format(fecha);
+                              
+                              return (
+                                <div key={empresa} className="bg-white rounded-md p-3 border border-amber-100 shadow-sm">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-gray-800">{empresa}</span>
+                                    <span className="text-amber-600 font-bold text-sm">+{info.increase.toFixed(1)}%</span>
+                                  </div>
+                                  <p className="text-xs text-gray-600">
+                                    A partir del {formatoFecha}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  }
+                })()}
+              </div>
+            </motion.div>
+          )}
 
           <div className="grid gap-6 md:grid-cols-2">
             {isLoading ? (
@@ -447,7 +631,8 @@ export default function Home() {
         onClose={() => setIsLocationModalOpen(false)}
         onLocationSet={(zone: string) => {
           setSelectedZone(zone);
-          fetchData(zone)
+          localStorage.setItem('userCity', zone);
+          fetchData(zone);
         }}
         onLoading={setIsLoading}
       />
