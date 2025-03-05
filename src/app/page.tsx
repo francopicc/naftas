@@ -111,7 +111,7 @@ export default function Home() {
 
   const fetchIncreases = async () => {
     try {
-      const response = await axios.get('/api/increases');
+      const response = await axios.get('https://naftas.vercel.app/api/increases');
       setIncreasesData(response.data);
     } catch (error) {
       console.error("Error fetching increases data:", error);
