@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import Image from 'next/image';
 
 interface FuelCardProps {
   estacion: {
@@ -25,12 +26,14 @@ const FuelCard = ({ estacion, estacionName, indicadorEmpresa, colorIndicador, se
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-            <img
+            <Image
               src={`/assets/${
                 estacionName.toLowerCase() === "shell c.a.p.s.a." ? "shell" : estacionName.toLowerCase()
               }.jpg`}
               alt=""
               className="h-12 w-12 object-cover"
+              width={12}
+              height={12}
             />
           </div>
           <h2 className="text-xl font-semibold text-gray-900">{estacionName}</h2>
