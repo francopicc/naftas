@@ -1,39 +1,50 @@
 import { NextResponse } from "next/server";
 import { calculateDistance } from "@/utils/calculateDistance";
-import Papa from "papaparse";
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const csvUrl =
-  "http://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/resource/80ac25de-a44a-4445-9215-090cf55cfda5/download/precios-en-surtidor-resolucin-3142016.csv";
+const config = {
+  url: "http://datos.energia.gob.ar/api/3/action/datastore_search",
+  options: {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      resource_id: "80ac25de-a44a-4445-9215-090cf55cfda5",
+      filters: { empresabandera: "YPF" },
+      limit: 40000,
+      offset: 0
+    })
+  },
+  processResponse: (data: any, lat: number, lon: number) => {
+    if (!data.success) {
+      throw new Error("Error al obtener los datos");
+    }
 
-// Función para parsear el CSV y determinar la localidad más cercana
-const processCSVResponse = (csvText: string, lat: number, lon: number) => {
-  // Parsear el CSV (se asume que la primera fila contiene encabezados)
-  const parseResult = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-  const records = parseResult.data;
+    const records = data.result.records;
 
-  // Determinar la ciudad (localidad) más cercana
-  let nearestCity: string | null = null;
-  let minDistance = Infinity;
+    // Find the nearest city based on coordinates
+    let nearestCity = null;
+    let minDistance = Infinity;
 
-  records.forEach((record: any) => {
-    // Verificar que el registro tenga valores de latitud y longitud
-    if (record.latitud && record.longitud) {
-      const recordLat = Number(record.latitud);
-      const recordLon = Number(record.longitud);
-      if (!isNaN(recordLat) && !isNaN(recordLon)) {
-        const distance = calculateDistance(lat, lon, recordLat, recordLon);
+    records.forEach((record: any) => {
+      if (record.latitud && record.longitud) {
+        const distance = calculateDistance(lat, lon, record.latitud, record.longitud);
         if (distance < minDistance) {
           minDistance = distance;
-          nearestCity = record.localidad; // Se asume que "localidad" es el campo que contiene el nombre de la ciudad
+          nearestCity = record.localidad;
         }
       }
-    }
-  });
+    });
 
-  return { zone: nearestCity };
+    return { zone: nearestCity };
+  },
+  handleError: (error: unknown) => {
+    console.error("Error al procesar los datos:", error);
+    return { error: String(error) };
+  }
 };
 
 export async function GET(req: Request) {
@@ -42,19 +53,16 @@ export async function GET(req: Request) {
   const lon = parseFloat(url.searchParams.get("long") || "");
 
   if (isNaN(lat) || isNaN(lon)) {
-    return NextResponse.json(
-      { error: "Parámetros 'lat' y 'long' son requeridos y deben ser números válidos" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Parámetros 'lat' y 'long' son requeridos y deben ser números válidos" }, { status: 400 });
   }
 
   try {
-    const response = await fetch(csvUrl);
-    const csvText = await response.text();
-    const result = processCSVResponse(csvText, lat, lon);
+    const response = await fetch(config.url, config.options);
+    const data = await response.json();
+    const result = config.processResponse(data, lat, lon);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error al procesar los datos:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    const errorResult = config.handleError(error);
+    return NextResponse.json(errorResult, { status: 500 });
   }
 }

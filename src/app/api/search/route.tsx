@@ -9,31 +9,37 @@ interface City {
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-export const revalidate = 60; // Revalida cada 60 segundos (ajústalo si es necesario)
+export const revalidate = 60;
 
-// URL del CSV
-const csvUrl =
-  "http://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/resource/80ac25de-a44a-4445-9215-090cf55cfda5/download/precios-en-surtidor-resolucin-3142016.csv";
+// Nueva URL de la API
+const apiUrl = "http://datos.energia.gob.ar/api/3/action/datastore_search";
 
-// Función para parsear el CSV y filtrar las ciudades que coincidan con la búsqueda
-const processCSVResponse = (csvText: string, query: string) => {
-  // Parsear el CSV asumiendo que la primera fila contiene encabezados
-  const parseResult = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-  const records = parseResult.data;
+// Función para obtener el mes actual en formato "YYYY-MM"
+const getCurrentMonth = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0"); // Asegura formato "03" en marzo
+  return `${year}-${month}`;
+};
 
-  // Filtrar registros por el campo "localidad" que incluya la consulta (q)
+// Función para procesar la respuesta de la API y filtrar por ciudad
+const processAPIResponse = (data: { success: boolean; result: { records: any[] } }, query: string) => {
+  if (!data.success) {
+    throw new Error("Error al obtener los datos");
+  }
+
+  const records = data.result.records;
+
   const matchingCities = records
     .filter((record: any) =>
-      record.localidad &&
-      record.localidad.toLowerCase().includes(query.toLowerCase())
+      record.localidad && record.localidad.toLowerCase().includes(query.toLowerCase())
     )
     .map((record: any) => ({
       nombre: record.localidad,
-      latitud: record.latitud,
-      longitud: record.longitud,
+      latitud: record.latitud || null,
+      longitud: record.longitud || null,
     }));
 
-  // Eliminar duplicados usando el nombre de la ciudad como clave
   const uniqueCities = Array.from(
     new Map(matchingCities.map((city: City) => [city.nombre, city])).values()
   );
@@ -53,10 +59,22 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Se desactiva la caché para evitar problemas con respuestas grandes
-    const response = await fetch(csvUrl, { cache: "no-store" });
-    const csvText = await response.text();
-    const result = processCSVResponse(csvText, query);
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      cache: 'no-store',
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        resource_id: "80ac25de-a44a-4445-9215-090cf55cfda5",
+        filters: { empresabandera: "YPF", "indice_tiempo": getCurrentMonth() }, // Se usa el mes actual dinámicamente
+        limit: 20000,
+        offset: 0
+      }),
+    });
+
+    const data = await response.json();
+    const result = processAPIResponse(data, query);
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error al procesar los datos:", error);

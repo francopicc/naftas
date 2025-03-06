@@ -12,6 +12,7 @@ import SettingsModal from "@/components/SettingsModal";
 import SkeletonCard from "@/components/SkeletonCard";
 import LocationRequestModal from "@/components/LocationRequestModal";
 import { calcularIndicadorEmpresa } from "@/utils/calcularIndicador";
+import Image from "next/image";
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -71,7 +72,7 @@ interface IncreasesResponse {
 
 const getColorIndicador = (puntaje: number): string => {
   if (puntaje >= 50) return "text-green-400 bg-green-100 py-1 px-2 rounded";
-  if (puntaje >= 40) return "text-yellow-500 bg-yellow-200 py-1 px-2 rounded";
+  if (puntaje >= 40) return "text-amber-400 bg-amber-100 py-1 px-2 rounded";
   if (puntaje >= 20) return "text-orange-500 bg-orange-200 py-1 px-2 rounded";
   return "text-red-500";
 };
@@ -516,12 +517,14 @@ export default function Home() {
                       <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center space-x-4">
                           <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-                            <img
+                            <Image
                               src={`/assets/${
                                 empresaNombre.toLowerCase() === "shell c.a.p.s.a." ? "shell" : empresaNombre.toLowerCase()
                               }.jpg`}
                               alt=""
                               className="h-12 w-12 object-cover"
+                              width={64}
+                              height={64}
                             />
                           </div>
                           <div>
@@ -673,7 +676,7 @@ export default function Home() {
                   {getTotalSuscripciones() > 0 && (
                     <div className="mb-6 p-4 bg-stone-100 rounded-lg border border-stone-300">
                       <p className="font-medium text-stone-800 mb-1">Total estimado:</p>
-                      <p className="text-2xl font-bold font-mono text-stone-900">${getTotalSuscripciones().toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-stone-900">${getTotalSuscripciones().toFixed(2)}</p>
                     </div>
                   )}
                   <div className="space-y-3">
@@ -703,13 +706,15 @@ export default function Home() {
                           
                           <div className="flex items-center space-x-3 mb-2">
                             <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-                              <img
-                                src={`/assets/${
-                                  suscripcion.empresa.toLowerCase() === "shell c.a.p.s.a." ? "shell" : suscripcion.empresa.toLowerCase()
-                                }.jpg`}
-                                alt=""
-                                className="h-8 w-8 object-cover"
-                              />
+                            <Image
+                              src={`/assets/${
+                                suscripcion.empresa.toLowerCase() === "shell c.a.p.s.a." ? "shell" : suscripcion.empresa.toLowerCase()
+                              }.jpg`}
+                              alt=""
+                              className="h-8 w-8 object-cover"
+                              height={64} 
+                              width={64} 
+                            />
                             </div>
                             <div>
                               <h3 className="font-semibold text-gray-900 text-sm">

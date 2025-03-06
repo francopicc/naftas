@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Copy, Bookmark, AlertCircle } from "lucide-react";
+import Image from "next/image";
 
 interface Combustible {
   precio: number;
@@ -95,12 +96,14 @@ const BottomSheet = ({
 
             <div className="flex items-center space-x-4">
               <div className="h-12 w-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-                <img
+                <Image
                   src={`/assets/${
                     empresa.toLowerCase() === "shell c.a.p.s.a." ? "shell" : empresa.toLowerCase()
                   }.jpg`}
                   alt=""
                   className="h-12 w-12 object-cover"
+                  width={64}
+                  height={64}
                 />
               </div>
               <div>

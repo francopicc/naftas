@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getNombreCombustible } from "@/utils/getNombreCombustible";
-import Papa from "papaparse";
+import { getNombreCombustible } from '@/utils/getNombreCombustible'
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Función para ordenar los combustibles según un orden predefinido
+// Function to sort fuels in the desired order
 const sortFuels = (fuels: { [key: string]: any }, empresa: string): { [key: string]: any } => {
   const fuelOrder = [
     getNombreCombustible(2, empresa),  // SUPER
@@ -30,31 +29,32 @@ const sortFuels = (fuels: { [key: string]: any }, empresa: string): { [key: stri
     }, {});
 };
 
-// Función para obtener los precios actualizados por ciudad (filtrando por el campo "localidad")
+// Function to get updated prices by city
 const obtenerPreciosActualizadosPorCiudad = async (ciudad: string) => {
-  try {
-    const csvUrl =
-      "http://datos.energia.gob.ar/dataset/1c181390-5045-475e-94dc-410429be4b17/resource/80ac25de-a44a-4445-9215-090cf55cfda5/download/precios-en-surtidor-resolucin-3142016.csv";
-    const response = await fetch(csvUrl);
-    const csvText = await response.text();
+  const config = {
+    url: "http://datos.energia.gob.ar/api/3/action/datastore_search",
+    options: {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        resource_id: "80ac25de-a44a-4445-9215-090cf55cfda5",
+        filters: { localidad: ciudad },
+        limit: 40000,
+        offset: 0,
+      }),
+    },
+    processResponse: (data: { success: boolean; result: { records: any[] } }) => {
+      if (!data.success) {
+        throw new Error("Error al obtener los datos");
+      }
 
-    // Parsear el CSV (se asume que la primera fila contiene los encabezados)
-    const parseResult = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-    const records = parseResult.data;
+      const records = data.result.records;
 
-    // Filtrar los registros según el valor de "ciudad" (comparación case-insensitive)
-    const filteredRecords = records.filter((record: any) => {
-      return (
-        record.localidad &&
-        record.localidad.trim().toLowerCase() === ciudad.trim().toLowerCase()
-      );
-    });
-
-    // Agrupar los datos por "localidad" y procesarlos
-    const groupedData = filteredRecords.reduce(
-      (acc: { [localidad: string]: any }, record: any) => {
-        // Se asume que el CSV contiene: localidad, empresabandera, producto, precio, fecha_vigencia, latitud, longitud, idproducto
+      const groupedData = records.reduce((acc: { [localidad: string]: { empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string }[] } }; coordenadas: { latitud: number | null; longitud: number | null } } }, record) => {
         const { localidad, empresabandera, producto, precio, fecha_vigencia, latitud, longitud, idproducto } = record;
+
         const nombreCombustible = getNombreCombustible(idproducto, empresabandera);
 
         if (!acc[localidad]) {
@@ -75,61 +75,59 @@ const obtenerPreciosActualizadosPorCiudad = async (ciudad: string) => {
           acc[localidad].empresas[empresabandera][nombreCombustible] = [];
         }
 
-        acc[localidad].empresas[empresabandera][nombreCombustible].push({
-          precio: Number(precio),
-          fecha_vigencia,
-        });
+        acc[localidad].empresas[empresabandera][nombreCombustible].push({ precio, fecha_vigencia });
 
         return acc;
-      },
-      {}
-    );
+      }, {});
 
-    // Procesar cada grupo para obtener el precio más reciente por combustible
-    const latestPrices = Object.keys(groupedData).reduce(
-      (result: { [localidad: string]: any }, localidad: string) => {
+      const latestPrices = Object.keys(groupedData).reduce((result: { [localidad: string]: { coordenadas: { latitud: number | null; longitud: number | null }; empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; } } } } }, localidad) => {
         result[localidad] = {
           coordenadas: groupedData[localidad].coordenadas,
-          empresas: Object.keys(groupedData[localidad].empresas).reduce(
-            (empresas: { [empresabandera: string]: any }, empresabandera: string) => {
-              empresas[empresabandera] = sortFuels(
-                Object.keys(groupedData[localidad].empresas[empresabandera]).reduce(
-                  (productos: { [producto: string]: any }, producto: string) => {
-                    const precios = groupedData[localidad].empresas[empresabandera][producto];
-                    // Seleccionar el registro con la fecha de vigencia más reciente
-                    const latestPrice = precios.reduce((latest: any, current: any) => {
-                      const currentDate = new Date(current.fecha_vigencia);
-                      const latestDate = new Date(latest.fecha_vigencia);
-                      return currentDate > latestDate ? current : latest;
-                    });
-                    productos[producto] = {
-                      precio: latestPrice.precio,
-                      fecha_vigencia: latestPrice.fecha_vigencia,
-                    };
-                    return productos;
-                  },
-                  {}
-                ),
-                empresabandera
-              );
-              return empresas;
-            },
-            {}
-          ),
-        };
-        return result;
-      },
-      {}
-    );
+          empresas: Object.keys(groupedData[localidad].empresas).reduce((empresas: { [empresabandera: string]: { [producto: string]: { precio: number; fecha_vigencia: string; } } }, empresabandera) => {
+            empresas[empresabandera] = sortFuels(
+              Object.keys(groupedData[localidad].empresas[empresabandera]).reduce((productos: { [producto: string]: { precio: number; fecha_vigencia: string; } }, producto) => {
+                const precios = groupedData[localidad].empresas[empresabandera][producto];
 
-    return latestPrices;
+                const latestPrice = precios.reduce((latest, current) => {
+                  const currentDate = new Date(current.fecha_vigencia);
+                  const latestDate = new Date(latest.fecha_vigencia);
+                  return currentDate > latestDate ? current : latest;
+                });
+
+                productos[producto] = {
+                  precio: latestPrice.precio,
+                  fecha_vigencia: latestPrice.fecha_vigencia,
+                };
+                return productos;
+              }, {}),
+              empresabandera
+            );
+
+            return empresas;
+          }, {}),
+        };
+
+        return result;
+      }, {});
+
+      return latestPrices;
+    },
+    handleError: (error: unknown) => {
+      console.error("Error al procesar los datos:", error);
+      return { error: String(error) };
+    },
+  };
+
+  try {
+    const response = await fetch(config.url, config.options);
+    const data = await response.json();
+    return config.processResponse(data);
   } catch (error) {
-    console.error("Error al procesar los datos:", error);
-    return { error: String(error) };
+    return config.handleError(error);
   }
 };
 
-// Export GET handler para la ruta
+// Export GET and POST handlers for the route
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const ciudad = url.searchParams.get("ciudad");

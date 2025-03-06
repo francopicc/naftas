@@ -1,13 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown, Check, X, MapPin, Loader2, Search, ArrowLeft } from "lucide-react"
 import axios from "axios"
-import { NextResponse } from "next/server"
-import { calculateDistance } from "@/utils/calculateDistance"
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -43,6 +40,15 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
   const inputRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
+  // Caché para búsquedas de ciudades (endpoint /api/search)
+  const searchCache = useRef<{ [query: string]: City[] }>({})
+
+  // Caché para datos de ciudad (endpoint /api/precio-base)
+  const cityDataCache = useRef<{ [city: string]: any }>({})
+
+  // Caché para la ubicación (endpoint /api/location)
+  const locationCache = useRef<{ [key: string]: string }>({})
+
   useEffect(() => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768)
@@ -50,14 +56,12 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
 
     checkIfMobile()
     window.addEventListener("resize", checkIfMobile)
-
     return () => window.removeEventListener("resize", checkIfMobile)
   }, [])
 
   useEffect(() => {
     // Sincronizar el estado inicial con localStorage
     const storedCity = localStorage.getItem("userCity")
-    console.log(storedCity)
     if (storedCity) {
       setZona(storedCity)
     }
@@ -74,34 +78,41 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
     const value = e.target.value
     setCityInput(value)
 
-    // Limpiar el timeout anterior si existe
+    // Limpiar timeout anterior
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
 
-    // Limpiar resultados si el input está vacío
     if (value.length < 3) {
       setSearchResults([])
       setIsSearching(false)
       return
     }
 
-    // Configurar nuevo timeout para la búsqueda
     setIsSearching(true)
+    // Debounce de 500ms para evitar peticiones innecesarias
     searchTimeoutRef.current = setTimeout(() => {
       searchCities(value)
-    }, 500) // Reducido a 500ms para mejor experiencia
+    }, 500)
   }
 
   const searchCities = async (query: string) => {
     if (query.length < 3) return
 
+    // Si la búsqueda ya está en caché, la usamos
+    if (searchCache.current[query]) {
+      setSearchResults(searchCache.current[query])
+      setIsSearching(false)
+      return
+    }
+
     try {
       const response = await axios.get(`/api/search?q=${query}`)
-      // Validate and filter out invalid city data
       const validCities = (response.data.cities || [])
         .filter((city: any): city is City => city && typeof city === "object" && city.nombre)
         .slice(0, 3)
+      // Almacenamos en caché el resultado
+      searchCache.current[query] = validCities
       setSearchResults(validCities)
     } catch (error) {
       console.error("Error buscando ciudades:", error)
@@ -112,9 +123,17 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
   }
 
   const fetchDataForCity = async (city: string) => {
+    // Si ya tenemos datos para la ciudad, los usamos
+    if (cityDataCache.current[city]) {
+      onData(cityDataCache.current[city])
+      return true
+    }
+
     try {
       const response = await axios.get(`/api/precio-base?ciudad=${city.toUpperCase()}`)
       if (response.data) {
+        // Guardamos en caché los datos recibidos
+        cityDataCache.current[city] = response.data
         onData(response.data)
         return true
       }
@@ -144,17 +163,23 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
       })
 
       const { latitude, longitude } = position.coords
-      const response = await axios.get(`/api/location?lat=${latitude}&long=${longitude}`)
-
-      if (response.data.zone) {
-        setSuggestedCity(response.data.zone)
+      // Creamos una llave para la caché basándonos en coordenadas (redondeadas)
+      const cacheKey = `${latitude.toFixed(4)}_${longitude.toFixed(4)}`
+      if (locationCache.current[cacheKey]) {
+        setSuggestedCity(locationCache.current[cacheKey])
         setShowCityConfirmation(true)
       } else {
-        throw new Error("No se pudo determinar la zona")
+        const response = await axios.get(`/api/location?lat=${latitude}&long=${longitude}`)
+        if (response.data.zone) {
+          locationCache.current[cacheKey] = response.data.zone
+          setSuggestedCity(response.data.zone)
+          setShowCityConfirmation(true)
+        } else {
+          throw new Error("No se pudo determinar la zona")
+        }
       }
     } catch (error) {
       let errorMessage = "Error al obtener la ubicación"
-
       if (error instanceof GeolocationPositionError) {
         switch (error.code) {
           case error.PERMISSION_DENIED:
@@ -170,7 +195,6 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
       } else if (axios.isAxiosError(error)) {
         errorMessage = "Error al conectar con el servidor"
       }
-
       setLocationError(errorMessage)
       console.error("Error de ubicación:", error)
     } finally {
@@ -242,7 +266,6 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
         <h3 className="text-lg font-semibold text-gray-900 mb-2">¿Confirmas esta ubicación?</h3>
         <p className="text-xl font-bold text-stone-800 mb-6">{suggestedCity}</p>
       </div>
-
       <div className="flex space-x-4">
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -284,8 +307,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
         </motion.button>
         <h3 className="text-lg font-semibold text-gray-900">Buscar ubicación</h3>
       </div>
-
-      {/* Search results for mobile - positioned ABOVE the input */}
+      {/* Resultados para mobile (arriba del input) */}
       {isMobile && searchResults.length > 0 && (
         <motion.ul
           initial={{ opacity: 0, y: 10 }}
@@ -364,7 +386,7 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
 
         {isSearching && <p className="text-xs text-gray-500 mt-2">Buscando ciudades...</p>}
 
-        {/* Search results for desktop - positioned BELOW the input */}
+        {/* Resultados para desktop (debajo del input) */}
         {!isMobile && searchResults.length > 0 && (
           <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 shadow-lg overflow-hidden">
             {searchResults.map((city, index) => (
@@ -412,7 +434,6 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
       <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}>
         <div className="relative space-y-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-
           <div className="space-y-3">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -428,13 +449,11 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
               )}
               <span>{isLoadingLocation ? "Detectando ubicación..." : "Usar mi ubicación actual"}</span>
             </motion.button>
-
             <div className="flex items-center my-3">
               <hr className="flex-grow border-gray-300" />
               <span className="px-3 text-sm text-gray-500">o</span>
               <hr className="flex-grow border-gray-300" />
             </div>
-
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -445,7 +464,6 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
               <span>Buscar manualmente</span>
             </motion.button>
           </div>
-
           {locationError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -455,7 +473,6 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
               {locationError}
             </motion.div>
           )}
-
           <span className="block text-xs text-stone-400 mt-4">
             Los precios entre provincias o zonas de la Argentina, suelen variar entre un 5% o 10%, por lo que para
             obtener datos más precisos es necesario especificarlo.
@@ -552,4 +569,3 @@ const SettingsModal = ({ isOpen, onClose, onZoneChange, onData }: SettingsModalP
 }
 
 export default SettingsModal
-
