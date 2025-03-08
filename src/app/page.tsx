@@ -729,7 +729,7 @@ export default function Home() {
                           <div className="flex justify-between items-center">
                             <p className="text-lg font-semibold">${suscripcion.precio}/l</p>
                             {suscripcion.litros && (
-                              <p className="text-sm text-gray-600 font-medium">{suscripcion.litros}L</p>
+                              <p className="text-sm text-gray-600 font-medium">{(suscripcion.litros).toFixed(2)}L</p>
                             )}
                           </div>
                           
