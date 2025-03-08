@@ -259,11 +259,22 @@ export default function Home() {
     return suscripciones.some(s => s.id === id);
   };
 
-  const getTotalSuscripciones = () => {
-    return suscripciones.reduce((total, suscripcion) => {
+const getTotalSuscripciones = (onlyAvailable = true) => {
+  return suscripciones.reduce((total, suscripcion) => {
+    // Verificar si el combustible está disponible
+    const disponible = responseData && 
+      Object.values(responseData).some(ciudad => 
+        ciudad.empresas[suscripcion.empresa] && 
+        ciudad.empresas[suscripcion.empresa][suscripcion.tipoCombustible]
+      );
+    
+    // Solo sumar al total si está disponible o si estamos calculando el total completo
+    if (!onlyAvailable || disponible) {
       return total + (suscripcion.total || 0);
-    }, 0);
-  };
+    }
+    return total;
+  }, 0);
+};
 
   // Verificar si hay aumentos futuros
   const hayAumentosFuturos = () => {
@@ -680,74 +691,84 @@ export default function Home() {
                     </div>
                   )}
                   <div className="space-y-3">
-                    {suscripciones.map((suscripcion) => {
-                      const disponible = responseData && 
-                        Object.values(responseData).some(ciudad => 
-                          ciudad.empresas[suscripcion.empresa] && 
-                          ciudad.empresas[suscripcion.empresa][suscripcion.tipoCombustible]
-                        );
-                      
-                      return (
-                        <motion.div
-                          key={suscripcion.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          className={`bg-white rounded-lg p-3 border ${disponible ? 'border-gray-200' : 'border-red-200'} relative`}
-                        >
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => eliminarSuscripcion(suscripcion.id)}
-                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100"
-                          >
-                            <X size={16} className="text-gray-400" />
-                          </motion.button>
-                          
-                          <div className="flex items-center space-x-3 mb-2">
-                            <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
-                            <Image
-                              src={`/assets/${
-                                suscripcion.empresa.toLowerCase() === "shell c.a.p.s.a." ? "shell" : suscripcion.empresa.toLowerCase()
-                              }.jpg`}
-                              alt=""
-                              className="h-8 w-8 object-cover"
-                              height={64} 
-                              width={64} 
-                            />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900 text-sm">
-                                {suscripcion.tipoCombustible}
-                              </h3>
-                              <p className="text-xs text-gray-500">
-                                {suscripcion.empresa}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex justify-between items-center">
-                            <p className="text-lg font-semibold">${suscripcion.precio}/l</p>
-                            {suscripcion.litros && (
-                              <p className="text-sm text-gray-600 font-medium">{(suscripcion.litros).toFixed(2)}L</p>
-                            )}
-                          </div>
-                          
-                          {suscripcion.total && (
-                            <div className="mt-1 bg-gray-50 p-2 rounded flex justify-between items-center">
-                              <span className="text-xs text-gray-500">Total:</span>
-                              <span className="font-semibold">${suscripcion.total.toFixed(2)}</span>
-                            </div>
-                          )}
-                          
-                          {!disponible && (
-                            <p className="text-xs text-red-500 mt-1">
-                              No disponible en {selectedZone}
-                            </p>
-                          )}
-                        </motion.div>
-                      );
-                    })}
+                  {suscripciones.map((suscripcion) => {
+  const disponible = responseData && 
+    Object.values(responseData).some(ciudad => 
+      ciudad.empresas[suscripcion.empresa] && 
+      ciudad.empresas[suscripcion.empresa][suscripcion.tipoCombustible]
+    );
+  
+  return (
+    <motion.div
+      key={suscripcion.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className={`bg-white rounded-lg p-3 border ${disponible ? 'border-gray-200' : 'border-red-100 bg-red-50'} relative`}
+    >
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => eliminarSuscripcion(suscripcion.id)}
+        className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100"
+      >
+        <X size={16} className="text-gray-400" />
+      </motion.button>
+      
+      <div className="flex items-center space-x-3 mb-2">
+        <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
+          <Image
+            src={`/assets/${
+              suscripcion.empresa.toLowerCase() === "shell c.a.p.s.a." ? "shell" : suscripcion.empresa.toLowerCase()
+            }.jpg`}
+            alt=""
+            className={`h-8 w-8 object-cover ${!disponible ? 'opacity-50 grayscale' : ''}`}
+            height={64} 
+            width={64} 
+          />
+        </div>
+        <div>
+          <h3 className={`font-semibold ${disponible ? 'text-gray-900' : 'text-gray-500'} text-sm`}>
+            {suscripcion.tipoCombustible}
+          </h3>
+          <p className="text-xs text-gray-500">
+            {suscripcion.empresa}
+          </p>
+        </div>
+      </div>
+      
+      {disponible ? (
+        <>
+          <div className="flex justify-between items-center">
+            <p className="text-lg font-semibold">${suscripcion.precio}/l</p>
+            {suscripcion.litros && (
+              <p className="text-sm text-gray-600 font-medium">{(suscripcion.litros).toFixed(2)}L</p>
+            )}
+            </div>
+            
+            {suscripcion.total && (
+              <div className="mt-1 bg-gray-50 p-2 rounded flex justify-between items-center">
+                <span className="text-xs text-gray-500">Total:</span>
+                <span className="font-semibold">${suscripcion.total.toFixed(2)}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mt-2 rounded-lg border border-red-200 bg-white p-3">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-600">No disponible en {selectedZone}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Este combustible no se encuentra en la ubicación actual
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
+  })}
                   </div>
                 </>
               )}
