@@ -1,3 +1,5 @@
+import { promises as fs } from "fs";
+import path from "path";
 import { NextResponse } from "next/server";
 
 interface City {
@@ -15,19 +17,11 @@ export async function GET(req: Request) {
   const query = url.searchParams.get("q") || "";
 
   try {
-    // Construir la URL absoluta usando el protocolo y host de la request
-    const protocol = req.headers.get("x-forwarded-proto") || "https";
-    const host = req.headers.get("host");
-    if (!host) throw new Error("Falta el header host");
+    // Obtener la ruta absoluta del archivo
+    const filePath = path.join(process.cwd(), "public/assets/cities.json");
+    const fileContents = await fs.readFile(filePath, "utf-8");
+    const data = JSON.parse(fileContents);
 
-    const fileUrl = `${protocol}://${host}/assets/cities.json`;
-
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error("No se pudo cargar el archivo cities.json");
-    }
-
-    const data = await response.json();
     // Se espera que el JSON tenga la forma { cities: City[] }
     const cities: City[] = data.cities;
 
